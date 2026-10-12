@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,134 +17,113 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class SecurityConfig {
 
-        private final JwtAuthFilter jwtAuthFilter;
+```
+private final JwtAuthFilter jwtAuthFilter;
 
-        public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
-                this.jwtAuthFilter = jwtAuthFilter;
-        }
+public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    this.jwtAuthFilter = jwtAuthFilter;
+}
 
-        // ============================================================
-        // PASSWORD ENCODER
-        // ============================================================
+// PASSWORD ENCODER
+@Bean
+public BCryptPasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+}
 
-        @Bean
-        public BCryptPasswordEncoder passwordEncoder() {
-                return new BCryptPasswordEncoder();
-        }
+// SECURITY FILTER CHAIN
+@Bean
+public SecurityFilterChain securityFilterChain(
+        HttpSecurity http) throws Exception {
 
-        // ============================================================
-        // SECURITY FILTER CHAIN
-        // ============================================================
+    http
+        .csrf(csrf -> csrf.disable())
 
-        @Bean
-        public SecurityFilterChain securityFilterChain(
-                        HttpSecurity http) throws Exception {
+        .cors(cors -> cors.configurationSource(
+            corsConfigurationSource()
+        ))
 
-                http
+        .sessionManagement(session -> session
+            .sessionCreationPolicy(
+                SessionCreationPolicy.STATELESS
+            )
+        )
 
-                                // Disable CSRF because we use JWT
-                                .csrf(csrf -> csrf.disable())
+        .authorizeHttpRequests(auth -> auth
 
-                                // Enable CORS
-                                .cors(cors -> cors
-                                                .configurationSource(corsConfigurationSource()))
+            // Allow CORS preflight requests
+            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                                // JWT = stateless
-                                .sessionManagement(session -> session
-                                                .sessionCreationPolicy(
-                                                                SessionCreationPolicy.STATELESS))
+            // Public authentication APIs
+            .requestMatchers(
+                "/freshers/signup",
+                "/freshers/login"
+            ).permitAll()
 
-                                // ====================================================
-                                // AUTHORIZATION
-                                // ====================================================
+            // Public product APIs
+            .requestMatchers(
+                "/products/**",
+                "/categories/**"
+            ).permitAll()
 
-                                .authorizeHttpRequests(auth -> auth
+            // Admin APIs
+            .requestMatchers("/admin/**")
+                .hasRole("ADMIN")
 
-                                                // -------------------------------
-                                                // PUBLIC APIs
-                                                // -------------------------------
+            // Growth admin APIs
+            .requestMatchers("/growth/**")
+                .hasRole("ADMIN")
 
-                                                .requestMatchers(
-                                                                "/freshers/signup",
-                                                                "/freshers/login")
-                                                .permitAll()
+            // All remaining APIs require authentication
+            .anyRequest().authenticated()
+        )
 
-                                                .requestMatchers(
-                                                                "/products/**",
-                                                                "/categories/**")
-                                                .permitAll()
+        .formLogin(form -> form.disable())
+        .httpBasic(basic -> basic.disable())
 
-                                                // -------------------------------
-                                                // ADMIN ONLY
-                                                // -------------------------------
+        .addFilterBefore(
+            jwtAuthFilter,
+            UsernamePasswordAuthenticationFilter.class
+        );
 
-                                                .requestMatchers("/admin/**")
-                                                .hasRole("ADMIN")
+    return http.build();
+}
 
-                                                // -------------------------------
-                                                // GROWTH ADMIN ONLY
-                                                // -------------------------------
+// CORS CONFIGURATION
+@Bean
+public CorsConfigurationSource corsConfigurationSource() {
 
-                                                .requestMatchers("/growth/**")
-                                                .hasRole("ADMIN")
+    CorsConfiguration configuration =
+        new CorsConfiguration();
 
-                                                // -------------------------------
-                                                // EVERYTHING ELSE
-                                                // -------------------------------
+    configuration.setAllowedOrigins(List.of(
+        "http://localhost:5173",
+        "https://ecommerce-frontend-beta-ecru.vercel.app",
+        "https://ecommerce-frontend-i0o8we0b9-dk1397938-8910.vercel.app"
+    ));
 
-                                                .anyRequest()
-                                                .authenticated())
+    configuration.setAllowedMethods(List.of(
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS"
+    ));
 
-                                // Disable default login
-                                .formLogin(form -> form.disable())
+    configuration.setAllowedHeaders(List.of("*"));
 
-                                // Disable HTTP Basic
-                                .httpBasic(basic -> basic.disable())
+    configuration.setAllowCredentials(true);
 
-                                // JWT filter
-                                .addFilterBefore(
-                                                jwtAuthFilter,
-                                                UsernamePasswordAuthenticationFilter.class);
+    UrlBasedCorsConfigurationSource source =
+        new UrlBasedCorsConfigurationSource();
 
-                return http.build();
-        }
+    source.registerCorsConfiguration(
+        "/**",
+        configuration
+    );
 
-        // ============================================================
-        // CORS CONFIGURATION
-        // ============================================================
+    return source;
+}
+```
 
-        @Bean
-        public CorsConfigurationSource corsConfigurationSource() {
-
-                CorsConfiguration configuration = new CorsConfiguration();
-
-                // React frontend
-                configuration.setAllowedOrigins(
-                                List.of("http://localhost:5173", "https://ecommerce-frontend-beta-ecru.vercel.app/"));
-
-                // Allowed HTTP methods
-                configuration.setAllowedMethods(
-                                List.of(
-                                                "GET",
-                                                "POST",
-                                                "PUT",
-                                                "DELETE",
-                                                "OPTIONS"));
-
-                // Allow Authorization header
-                configuration.setAllowedHeaders(
-                                List.of("*"));
-
-                // Allow credentials
-                configuration.setAllowCredentials(true);
-
-                // Apply CORS to all APIs
-                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-
-                source.registerCorsConfiguration(
-                                "/**",
-                                configuration);
-
-                return source;
-        }
 }
