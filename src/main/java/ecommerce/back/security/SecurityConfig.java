@@ -93,12 +93,11 @@ public CorsConfigurationSource corsConfigurationSource() {
 
     CorsConfiguration configuration =
         new CorsConfiguration();
-
-   configuration.setAllowedOrigins(List.of(
+configuration.setAllowedOrigins(List.of(
     "http://localhost:5173",
-    "https://ecommerce-frontend-ekvaeqh0i-dk1397938-8910.vercel.app",
     "https://ecommerce-frontend-beta-ecru.vercel.app",
-    "https://ecommerce-frontend-i0o8we0b9-dk1397938-8910.vercel.app"
+    "https://ecommerce-frontend-i0o8we0b9-dk1397938-8910.vercel.app",
+    "https://ecommerce-frontend-ekvaeqh0i-dk1397938-8910.vercel.app"
 ));
 
     configuration.setAllowedMethods(List.of(
