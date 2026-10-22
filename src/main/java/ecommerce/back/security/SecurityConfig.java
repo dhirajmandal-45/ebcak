@@ -17,7 +17,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class SecurityConfig {
 
-```
 private final JwtAuthFilter jwtAuthFilter;
 
 public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
@@ -124,6 +123,6 @@ public CorsConfigurationSource corsConfigurationSource() {
 
     return source;
 }
-```
+
 
 }
